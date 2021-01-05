@@ -2,8 +2,8 @@ import pymysql
 import threading
 import time
 db_settings = {
-    "host": "120.101.8.240",
-    "port": 3308,
+    "host": "120.101.8.35",
+    "port": 3306,
     "user": "kk",
     "password": "12332162",
     "db": "3d_printing"
@@ -16,6 +16,7 @@ def connect():
     conn = pymysql.connect(**db_settings)
     start_time = time.time()
     def job():
+        time.sleep(10)
         while not over:
             print(f'Time: {int(time.time() - start_time)}, Status: {get_latest_status()}')
             time.sleep(3600)
@@ -105,10 +106,48 @@ def del_users(student_id):
         print(ex)
         return False
 
+def find_id_user(card_id):
+    try:
+        with conn.cursor() as cursor:
+            command = f'SELECT * FROM users WHERE card_id="{card_id}"'
+            cursor.execute(command)
+            result = cursor.fetchall()
+            return result[0][3]
+            # for i in result:
+            #     if i[3] == password:
+            #         return True
+            # return False
+    except Exception as ex:
+        # print(ex)
+        return False
 
+def insert_unregistered_status(card_id, status):
+    try:
+        with conn.cursor() as cursor:
+            command = f"INSERT INTO `status` (`creation_date`, `student_id`, `card_id`, `status`) VALUES (CURRENT_TIMESTAMP, 'unregistered', '{card_id}', '{status}');"
+            cursor.execute(command)
+            conn.commit()
+            return True
+    except Exception as ex:
+        print(ex)
+        return False
+
+def login_verification(student_id, password):
+    try:
+        with conn.cursor() as cursor:
+            command = f'SELECT * FROM users WHERE student_id="{student_id}"'
+            cursor.execute(command)
+            result = cursor.fetchall()
+            for i in result:
+                if i[2] == password:
+                    return True
+            return False
+    except Exception as ex:
+        # print(ex)
+        return False
 
 if __name__ == "__main__":
     release()
     connect()
-    print(del_users('3'))
+    print(find_id_user('344896s245368'))
     # insert_status('B0742033','boot')

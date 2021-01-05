@@ -1,25 +1,30 @@
 from flask import Flask, request, Response, jsonify, render_template
-# from time import time, sleep
+from time import time, sleep
 import mysql
+import gpio
 import cv2
 import os
+import threading
 app = Flask(__name__)
 # app.config["DEBUG"] = True
 cap = cv2.VideoCapture(0)
-INSIDE_HOST = '192.168.0.20'
-OUT_HOST = '120.101.8.240'
+INSIDE_HOST = '192.168.1.20'
+OUT_HOST = '120.101.8.132'
 PORT = 5000
+gpio_out = False
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    global gpio_out
     if request.method == 'POST':
         action = request.values.get('action')
         # 停機
         if action == 'shutdown':
-            student_id = request.values.get('student_id')
+            student_id = request.values.get('student_id').upper()
             password = request.values.get('password')
             login_result = mysql.login_verification(student_id, password)
             status_result = mysql.get_latest_status()
             if student_id == status_result[1] and login_result is True:
+                gpio_out = False
                 mysql.insert_status(student_id,'shutdown')
                 return render_template('login.html', host = OUT_HOST, port = PORT, student_id = student_id, password = password, shutdown = 'disabled', message = '無法操作：非當前使用者或機台尚未啟動')
         # 登出
@@ -31,7 +36,7 @@ def home():
                 return render_template('index.html', host = OUT_HOST, port = PORT, status = '(機器閒置中)')
         # 登入
         elif action == 'login':
-            student_id = request.values.get('student_id')
+            student_id = request.values.get('student_id').upper()
             password = request.values.get('password')
             login_result = mysql.login_verification(student_id, password)
             # 登入失敗
@@ -43,7 +48,7 @@ def home():
                 status_result = mysql.get_latest_status() # (datetime, student_id, card_id, status)
                 # 當前使用者
                 if status_result[1] == student_id:
-                    mysql.insert_status(student_id,'login user')
+                    mysql.insert_status(student_id.upper(),'login user')
                     if status_result[3] == 'boot':
                         return render_template('login.html', host = OUT_HOST, port = PORT, student_id = student_id, password = password, message = '操作警告：按下立即停機，需手動重啟')
                     else:
@@ -61,6 +66,7 @@ def home():
         
 @app.route('/api', methods=['POST'])
 def api():
+    global gpio_out
     action = request.values.get('action')
     if action == 'get_status':
         result = mysql.get_latest_status()
@@ -98,6 +104,10 @@ def api():
             student_id = request.values.get('student_id')
             status = request.values.get('status')
             if mysql.insert_status(student_id, status) is True:
+                if status == 'boot':
+                    gpio_out = True
+                elif status == 'shutdown':
+                    gpio_out = False
                 return 'True'
         elif key == 'show_status':
             num = request.values.get('num')
@@ -139,8 +149,43 @@ def stream():
                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
     return Response(gen(cap), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-mysql.connect()
-app.run(host = INSIDE_HOST, port = PORT)
-print('end')
-cap.release()
-mysql.release()
+# def job():
+#     global gpio_out
+#     import gpio
+#     gpio.init()
+#     gpio_temp = False
+#     while True:
+#         if gpio_out != gpio_temp:
+#             gpio_temp = gpio_out
+#             print(gpio_temp)
+#             if gpio_temp == True:
+#                 gpio.set_relay_on()
+#             else:
+#                 gpio.set_relay_off()
+# threading.Thread(target = job).start()
+
+
+def job():
+    app.run(host = INSIDE_HOST, port = PORT)
+threading.Thread(target = job).start()
+
+
+
+try:
+    gpio_out = False
+    mysql.connect()
+    gpio.init()
+    gpio_temp = False
+    while True:
+        if gpio_out != gpio_temp:
+            gpio_temp = gpio_out
+            print(gpio_temp)
+            if gpio_temp == True:
+                gpio.set_relay_on()
+            else:
+                gpio.set_relay_off()
+finally:
+    print('end')
+    cap.release()
+    mysql.release()
+    gpio.cleanup()
