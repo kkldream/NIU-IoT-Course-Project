@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -22,17 +23,19 @@ import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
     static final String TAG = "http_post_test";
-    static final String API_URL = "http://120.101.8.240:5000/api";
+    static final String API_URL = "http://120.101.8.132:5000/api";
+    static final String STREAM_URL = "http://120.101.8.132:5000/stream";
     Handler handler;
     TextView textView;
     Button button;
+    WebView webView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         handler = new Handler();
-        textView = findViewById(R.id.textView);
-        button = findViewById(R.id.button);
+        findViewById();
+        webView_stream(STREAM_URL);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -70,5 +73,18 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    private void findViewById() {
+        textView = findViewById(R.id.textView);
+        button = findViewById(R.id.button);
+        webView = findViewById(R.id.webView);
+    }
+
+    private void webView_stream(String url) {
+        webView.getSettings().setUseWideViewPort(true);
+//        webView.getSettings().setBuiltInZoomControls(true);
+        webView.getSettings().setLoadWithOverviewMode(true);
+        webView.loadUrl(url);
     }
 }
