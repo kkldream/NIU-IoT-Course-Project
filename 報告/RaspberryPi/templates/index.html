@@ -1,0 +1,22 @@
+<html>
+    <head>
+        <title>3D龍管理系統</title>
+        <style>body { font-family: monospace;}</style>
+    </head>
+    <body>
+        <br/>
+        <center><h1>3D龍管理系統</h1></center>
+        <center><h3>{{status}}</h3></center>
+        <center><img src="./stream"></center>
+        <br/>
+        <form method="POST" action="http://{{host}}:{{port}}/">
+            <input type="hidden" name="action" value="login"/>
+            <center>Student ID:</center><br/>
+            <center><input name="student_id" type="text"/></center><br/>
+            <center>Password:</center><br/>
+            <center><input name="password" type="password"/></center><br/>
+            <center><input type="submit" value="Login"/></center><br/>
+            <center>{{error_message}}</center>
+        </form>
+    </body>
+</html>
